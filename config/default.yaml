@@ -99,7 +99,7 @@ simulator:
       kind: spike
       magnitude: 1600
       start_after: 8
-      duration: 18
+      duration: 180
 
 detection:
   cooldown_seconds: 15
@@ -128,13 +128,13 @@ detection:
   zscore:
     enabled: true
     window: 30
-    threshold: 4.0
-    min_samples: 8
+    threshold: 5.0
+    min_samples: 12
   ewma:
     enabled: true
     alpha: 0.25
-    threshold: 4.0
-    min_samples: 8
+    threshold: 5.0
+    min_samples: 12
   isolation_forest:
     enabled: false
     window: 40

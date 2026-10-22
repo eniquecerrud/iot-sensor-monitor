@@ -2,6 +2,8 @@
 
 Sistema de monitorización de sensores IoT sobre MQTT. Un simulador publica telemetría JSON, un colector la valida y la guarda, un motor de anomalías genera alertas y un panel web las muestra en tiempo real. Todo el flujo puede ejecutarse contra un broker Mosquitto o, para demos y pruebas, sobre un bus en memoria dentro de un solo proceso.
 
+![Panel en vivo: lab-01 con un pico de CO₂ y alertas críticas](docs/dashboard.png)
+
 ## Qué incluye
 
 - Simulador de dispositivos con temperatura, humedad, presión, CO₂ y vibración. Cada serie tiene ruido de medida, deriva, reversión a la media, ciclo lento y averías inyectables (`spike`, `stuck`, `bias`, `dropout`).
@@ -34,7 +36,7 @@ flowchart LR
   API --> UI[Panel web]
 ```
 
-En el modo embebido (`sensormon serve --embedded`) el simulador, el colector y el panel comparten el bus en memoria y el fichero SQLite. No hace falta Mosquitto.
+En el modo embebido (`sensormon serve --embedded`) el simulador, el colector y el panel comparten el bus en memoria y el fichero SQLite. No hace falta Mosquitto. El panel abre `/ws/live` y, si el WebSocket se cae, sigue actualizando los gráficos por REST.
 
 Con Docker, cada pieza es un servicio. El colector es el único escritor de SQLite. El panel lee el mismo volumen y, además, se suscribe al broker para empujar lecturas y alertas por WebSocket.
 

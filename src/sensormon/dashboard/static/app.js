@@ -389,13 +389,52 @@ async function refreshAll() {
   renderCharts();
 }
 
+let wsOpen = false;
+
+async function poll() {
+  try {
+    const [devices, alerts] = await Promise.all([
+      fetchJSON("/api/devices"),
+      fetchJSON("/api/alerts?limit=50"),
+    ]);
+    state.devices = devices;
+    state.alerts = alerts;
+    if (!state.selected && devices.length) state.selected = devices[0].device_id;
+    if (state.selected) {
+      const device = devices.find((item) => item.device_id === state.selected);
+      const metrics = device && device.sensors.length ? device.sensors : [];
+      await Promise.all(
+        metrics.map(async (metric) => {
+          const rows = await fetchJSON(
+            `/api/readings?device_id=${encodeURIComponent(state.selected)}&metric=${encodeURIComponent(metric)}&limit=90`,
+          );
+          state.series[seriesKey(state.selected, metric)] = rows.map(pointFrom);
+        }),
+      );
+    }
+    renderDevices();
+    renderSummary();
+    renderAlerts();
+    renderKpis();
+    renderCharts();
+    if (!wsOpen) setStatus("live", "en vivo");
+  } catch (error) {
+    console.error(error);
+    if (!wsOpen) setStatus("down", "sin api");
+  }
+}
+
 function connectWS() {
   const proto = location.protocol === "https:" ? "wss" : "ws";
   const ws = new WebSocket(`${proto}://${location.host}/ws/live`);
   state.ws = ws;
   setStatus("wait", "conectando");
-  ws.onopen = () => setStatus("live", "en vivo");
+  ws.onopen = () => {
+    wsOpen = true;
+    setStatus("live", "en vivo");
+  };
   ws.onclose = () => {
+    wsOpen = false;
     setStatus("down", "reconectando");
     setTimeout(connectWS, 1200);
   };
@@ -435,6 +474,7 @@ async function boot() {
     devicesEl.append(emptyNode("No se pudo cargar el API."));
   }
   connectWS();
+  window.setInterval(poll, 2000);
 }
 
 window.setInterval(() => {
