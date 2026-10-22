@@ -1,0 +1,151 @@
+# Configuración de laboratorio. Las variables SENSOR_* pisan estos valores.
+# Ejemplos: SENSOR_MQTT__HOST, SENSOR_STORAGE__PATH, SENSOR_API__PORT.
+
+mqtt:
+  enabled: true
+  host: 127.0.0.1
+  port: 1883
+  client_id: sensormon
+  keepalive: 60
+  topic_root: sensors
+
+storage:
+  path: data/sensormon.db
+
+api:
+  host: 127.0.0.1
+  port: 8000
+
+simulator:
+  interval_seconds: 1.0
+  seed: 7
+  devices:
+    - id: lab-01
+      location: Laboratorio de calibración
+      sensors:
+        temperature:
+          baseline: 22.4
+          noise: 0.12
+          drift: 0.0
+          unit: "°C"
+          diurnal_amplitude: 0.8
+          cycle_period_seconds: 180
+          min_value: -20
+        humidity:
+          baseline: 46.0
+          noise: 0.6
+          unit: "%"
+          diurnal_amplitude: 2.0
+          cycle_period_seconds: 240
+          min_value: 0
+          max_value: 100
+        pressure:
+          baseline: 1013.2
+          noise: 0.35
+          unit: hPa
+          diurnal_amplitude: 0.6
+          cycle_period_seconds: 300
+        co2:
+          baseline: 680
+          noise: 12
+          drift: 0.4
+          unit: ppm
+          min_value: 400
+        vibration:
+          baseline: 1.05
+          noise: 0.08
+          unit: mm/s
+          min_value: 0
+    - id: warehouse-02
+      location: Almacén norte
+      sensors:
+        temperature:
+          baseline: 18.5
+          noise: 0.18
+          unit: "°C"
+          diurnal_amplitude: 1.4
+          cycle_period_seconds: 200
+        humidity:
+          baseline: 58.0
+          noise: 0.8
+          unit: "%"
+          min_value: 0
+          max_value: 100
+        co2:
+          baseline: 820
+          noise: 18
+          unit: ppm
+          min_value: 400
+    - id: pump-03
+      location: Bomba de proceso
+      sensors:
+        temperature:
+          baseline: 41.0
+          noise: 0.25
+          unit: "°C"
+        pressure:
+          baseline: 1024.0
+          noise: 0.8
+          unit: hPa
+        vibration:
+          baseline: 2.4
+          noise: 0.18
+          unit: mm/s
+          min_value: 0
+  faults:
+    # Pico de CO₂ a los 8 s para que el panel muestre una alerta en la demo.
+    - device_id: lab-01
+      metric: co2
+      kind: spike
+      magnitude: 1600
+      start_after: 8
+      duration: 180
+
+detection:
+  cooldown_seconds: 15
+  thresholds:
+    temperature:
+      min: 10
+      max: 48
+      critical_min: 0
+      critical_max: 60
+    humidity:
+      min: 15
+      max: 80
+      critical_min: 5
+      critical_max: 95
+    pressure:
+      min: 980
+      max: 1048
+      critical_min: 950
+      critical_max: 1070
+    co2:
+      max: 1200
+      critical_max: 2000
+    vibration:
+      max: 5.5
+      critical_max: 9
+  zscore:
+    enabled: true
+    window: 30
+    threshold: 5.0
+    min_samples: 12
+  ewma:
+    enabled: true
+    alpha: 0.25
+    threshold: 5.0
+    min_samples: 12
+  isolation_forest:
+    enabled: false
+    window: 40
+    contamination: 0.05
+    min_samples: 30
+    refit_every: 10
+
+notifiers:
+  - type: console
+    enabled: true
+  - type: webhook
+    enabled: false
+    url: http://127.0.0.1:9000/alerts
+    timeout_seconds: 3

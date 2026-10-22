@@ -1,0 +1,71 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./deploy/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test: ["CMD", "mosquitto_pub", "-h", "127.0.0.1", "-t", "healthcheck", "-m", "ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 3s
+    restart: unless-stopped
+
+  collector:
+    build: .
+    command: ["collect"]
+    environment:
+      SENSOR_MQTT__HOST: mosquitto
+      SENSOR_STORAGE__PATH: /data/sensormon.db
+    volumes:
+      - sensordata:/data
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    restart: unless-stopped
+
+  simulator:
+    build: .
+    command: ["simulate"]
+    environment:
+      SENSOR_MQTT__HOST: mosquitto
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    restart: unless-stopped
+
+  dashboard:
+    build: .
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      SENSOR_MQTT__HOST: mosquitto
+      SENSOR_API__HOST: 0.0.0.0
+      SENSOR_API__PORT: "8000"
+      SENSOR_STORAGE__PATH: /data/sensormon.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - sensordata:/data
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      collector:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 8s
+    restart: unless-stopped
+
+volumes:
+  sensordata:
